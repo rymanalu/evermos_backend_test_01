@@ -31,17 +31,24 @@ class AppServiceProvider extends ServiceProvider
     protected function registerResponseMacro()
     {
         Response::macro('api', function (array $data = [], $status = 200, array $headers = [], $options = 0, $callback = null) {
-            $message = $status >= 200 && $status < 400 ? 'Success' : 'Error';
+            $isSuccess = $status >= 200 && $status < 400;
 
-            $data = [
+            $message = $isSuccess ? 'Success' : 'Error';
+
+            $body = [
                 'meta' => [
                     'status' => $status,
                     'message' => Arr::get($data, 'meta_message', $message),
                 ],
-                'data' => Arr::except($data, 'meta_message'),
             ];
 
-            $response = Response::json($data, $status, $headers, $options);
+            if ($isSuccess) {
+                $body['data'] = Arr::except($data, 'meta_message');
+            } else {
+                $body['errors'] = Arr::get($data, 'errors');
+            }
+
+            $response = Response::json($body, $status, $headers, $options);
 
             return $callback ? $response->withCallback($callback) : $response;
         });
