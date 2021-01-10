@@ -2,11 +2,11 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\CheckStock;
+use App\Rules\CheckCart;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class AddCartRequest extends FormRequest
+class CheckoutCartRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -26,15 +26,10 @@ class AddCartRequest extends FormRequest
     public function rules()
     {
         return [
-            'product_id' => [
+            'user_id' => [
                 'required',
-                Rule::exists('products', 'id'),
-            ],
-            'qty' => [
-                'required',
-                'numeric',
-                'min:1',
-                new CheckStock($this->input('product_id')),
+                Rule::exists('users', 'id'),
+                new CheckCart,
             ],
         ];
     }

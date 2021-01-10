@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Cart;
 use App\Http\Requests\AddCartRequest;
+use App\Http\Requests\CheckoutCartRequest;
 use App\Http\Requests\EditCartRequest;
+use App\Order;
+use App\Product;
 use App\User;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -71,6 +74,50 @@ class CartController extends Controller
             return response()->api(['meta_message' => 'Product updated in cart']);
         } catch (Exception $err) {
             $message = 'Failed to update a product in user\'s cart';
+
+            DB::rollBack();
+
+            Log::error($message, ['error' => $err]);
+
+            return response()->api(['meta_message' => $message], 500);
+        }
+    }
+
+    public function checkout(CheckoutCartRequest $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $order = Order::create([
+                'user_id' => $request->user_id,
+                'total' => 0,
+            ]);
+
+            $total = 0;
+
+            foreach (Cart::where('user_id', $request->user_id)->get() as $cart) {
+                $product = Product::findOrFail($cart->product_id);
+
+                $subTotal = $product->price * $cart->qty;
+
+                $order->items()->create([
+                    'product_id' => $product->id,
+                    'qty' => $cart->qty,
+                    'total' => $subTotal,
+                ]);
+
+                $total += $subTotal;
+            }
+
+            $order->update(['total' => $total]);
+
+            Cart::where('user_id', $request->user_id)->delete();
+
+            DB::commit();
+
+            return response()->api(['meta_message' => 'Checkout cart succeed']);
+        } catch (Exception $err) {
+            $message = 'Failed to checkout user\'s cart';
 
             DB::rollBack();
 
