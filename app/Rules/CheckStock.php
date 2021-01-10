@@ -10,13 +10,16 @@ class CheckStock implements Rule
 {
     protected $productId;
 
+    protected $except = 0;
+
     protected $checkout = false;
 
     protected $qty = 0;
 
-    public function __construct($productId, $checkout = false)
+    public function __construct($productId, $except = 0, $checkout = false)
     {
         $this->productId = $productId;
+        $this->except = $except;
         $this->checkout = $checkout;
     }
 
@@ -35,9 +38,13 @@ class CheckStock implements Rule
         if ($this->checkout) {
             $this->qty = $product->qty;
         } else {
-            $qtyInCart = Cart::sharedLock()
-                ->where('product_id', $this->productId)
-                ->sum('qty');
+            $qtyInCartQuery = Cart::sharedLock()->where('product_id', $this->productId);
+
+            if (is_numeric($this->except)) {
+                $qtyInCartQuery = $qtyInCartQuery->where('id', '!=', $this->except);
+            }
+
+            $qtyInCart = $qtyInCartQuery->sum('qty');
 
             $this->qty = $product->qty - $qtyInCart;
         }

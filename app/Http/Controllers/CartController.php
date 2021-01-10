@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Cart;
-use App\Http\Requests\CartRequest;
+use App\Http\Requests\AddCartRequest;
+use App\Http\Requests\EditCartRequest;
 use App\User;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class CartController extends Controller
         return response()->api($user->cart->toArray());
     }
 
-    public function store(CartRequest $request)
+    public function store(AddCartRequest $request)
     {
         DB::beginTransaction();
 
@@ -44,6 +45,32 @@ class CartController extends Controller
             return response()->api(['meta_message' => 'Product added to cart']);
         } catch (Exception $err) {
             $message = 'Failed to add a product to user\'s cart';
+
+            DB::rollBack();
+
+            Log::error($message, ['error' => $err]);
+
+            return response()->api(['meta_message' => $message], 500);
+        }
+    }
+
+    public function update(EditCartRequest $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $cart = Cart::findOrFail($request->id);
+
+            $cart->update([
+                'product_id' => $request->product_id,
+                'qty' => $request->qty,
+            ]);
+
+            DB::commit();
+
+            return response()->api(['meta_message' => 'Product updated in cart']);
+        } catch (Exception $err) {
+            $message = 'Failed to update a product in user\'s cart';
 
             DB::rollBack();
 

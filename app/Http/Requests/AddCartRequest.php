@@ -6,7 +6,7 @@ use App\Rules\CheckStock;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class CartRequest extends FormRequest
+class AddCartRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
