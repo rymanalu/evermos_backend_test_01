@@ -29,7 +29,7 @@ class CheckStock implements Rule
             return false;
         }
 
-        $product = Product::sharedLock()->find($this->productId);
+        $product = Product::find($this->productId);
 
         if ($product === null) {
             return false;
