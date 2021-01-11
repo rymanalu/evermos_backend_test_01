@@ -6,6 +6,7 @@ use App\Cart;
 use App\Http\Requests\AddCartRequest;
 use App\Http\Requests\CheckoutCartRequest;
 use App\Http\Requests\EditCartRequest;
+use App\Http\Requests\GetCartRequest;
 use App\Order;
 use App\Product;
 use App\User;
@@ -15,9 +16,9 @@ use Illuminate\Support\Facades\Log;
 
 class CartController extends Controller
 {
-    public function index()
+    public function index(GetCartRequest $request)
     {
-        $user = User::first();
+        $user = User::find($request->user_id);
 
         return response()->api($user->cart->toArray());
     }
@@ -27,9 +28,8 @@ class CartController extends Controller
         DB::beginTransaction();
 
         try {
-            $user = User::first();
-
-            $productInCart = Cart::where('user_id', $user->id)
+            $productInCart = Cart::lockForUpdate()
+                ->where('user_id', $request->user_id)
                 ->where('product_id', $request->product_id)
                 ->first();
 
@@ -37,7 +37,7 @@ class CartController extends Controller
                 $productInCart->increment('qty', $request->qty);
             } else {
                 Cart::create([
-                    'user_id' => $user->id,
+                    'user_id' => $request->user_id,
                     'product_id' => $request->product_id,
                     'qty' => $request->qty,
                 ]);
@@ -62,7 +62,7 @@ class CartController extends Controller
         DB::beginTransaction();
 
         try {
-            $cart = Cart::findOrFail($request->id);
+            $cart = Cart::lockForUpdate()->findOrFail($request->id);
 
             $cart->update([
                 'product_id' => $request->product_id,
@@ -94,8 +94,11 @@ class CartController extends Controller
             ]);
 
             $total = 0;
+            $shoppingCart = Cart::lockForUpdate()
+                ->where('user_id', $request->user_id)
+                ->get();
 
-            foreach (Cart::where('user_id', $request->user_id)->get() as $cart) {
+            foreach ($shoppingCart as $cart) {
                 $product = Product::findOrFail($cart->product_id);
 
                 $subTotal = $product->price * $cart->qty;
